@@ -1,0 +1,12 @@
+
+gradio>=4.0.0
+pillow>=10.0.0
+
+langgraph>=0.0.26
+langchain-core>=0.1.52
+langchain-google-genai>=1.0.1
+
+tavily-python
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+typing-extensions>=4.12.0
