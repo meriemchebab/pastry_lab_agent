@@ -1,7 +1,10 @@
 import base64
 import uuid
+from typing import Any, cast
 import gradio as gr
+from gradio.themes import Soft
 from langchain_core.messages import HumanMessage
+from langchain_core.runnables import RunnableConfig
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,7 +12,7 @@ load_dotenv()
 from core.graph import compiled_graph
 
 #  theme for gradio
-class PastryTheme(gr.themes.Soft):
+class PastryTheme(Soft):
     def __init__(self):
         super().__init__()
         # Light‑mode
@@ -67,8 +70,10 @@ def process_input(message_dict: dict, chat_history: list, thread_id: str):
     for file_path in files:
         chat_history.append({"role": "user", "content": (file_path,)})
 
-    config = {"configurable": {"thread_id": thread_id}}
-    response = compiled_graph.invoke({"messages": [human_msg]}, config=config)
+    config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
+    response = compiled_graph.invoke(
+        cast(Any, {"messages": [human_msg]}), config=config
+    )
 
     final_ai_msg = response["messages"][-1].content
     if isinstance(final_ai_msg, list):
@@ -120,7 +125,7 @@ with gr.Blocks(title="The Pastry Lab", theme=custom_theme) as demo:
         with gr.Column(scale=3):
             chatbot = gr.Chatbot(
                 label="Kitchen Copilot",
-                type="messages",
+                
                 height=600,
             )
 
@@ -138,4 +143,4 @@ with gr.Blocks(title="The Pastry Lab", theme=custom_theme) as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(theme=custom_theme)
