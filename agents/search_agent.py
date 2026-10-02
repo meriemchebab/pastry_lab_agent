@@ -1,10 +1,13 @@
 """Recipe search – finds real recipes via the web."""
+import re
+
 from langchain_core.messages import SystemMessage
+from ._helpers import collect_tool_names, message_to_text
 from ._model import init_gemini
 from tools.search_tool import web_search
 from core.state import AgentBakingState
 
-# Initialise model and bind tools once at import time
+
 search_model = init_gemini(temperature=0.2)
 search_agent = search_model.bind_tools([web_search])
 
@@ -38,11 +41,49 @@ For each suggested dessert (up to 3), structure the response exactly using the f
 - [A 1-sentence tip on technique, avoiding common mistakes, or easy substitutes]
 """
 
+def _parse_recipe(text: str) -> dict | None:
+    """Pull the first recipe out of the formatted answer.
+
+    The system prompt pins the output shape, so this is cheaper and far more
+    reliable than a second LLM call to summarise what we just wrote.
+    """
+    if not text:
+        return None
+
+    name_match = re.search(r"^###\s+(.+?)\s*$", text, re.MULTILINE)
+    if not name_match:
+        return None
+
+    url_match = re.search(r"https?://\S+", text)
+    source_match = re.search(r"\*\*Source:\*\*\s*(.+?)\s*$", text, re.MULTILINE)
+
+    return {
+        "name": name_match.group(1).strip(),
+        "source": source_match.group(1).strip() if source_match else "Unknown",
+        "url": url_match.group(0) if url_match else None,
+    }
+
+
 def search_agent_node(state: AgentBakingState):
     """
     Node that LangGraph will execute when routing to the Search Agent.
+
+    On the first pass the model requests `web_search`; LangGraph routes to the
+    `search_tools` node, then sends us back here with the results in `messages`
+    and we produce the final, human-readable answer.
     """
     messages = state.get("messages", [])
     conversation = [SystemMessage(content=system_prompt)] + messages
     response = search_agent.invoke(conversation)
-    return {"messages": [response]}
+
+    # Only the *final* pass (no pending tool calls) becomes the active recipe.
+    if response.tool_calls:
+        return {"messages": [response]}
+
+    recipe = _parse_recipe(message_to_text(response.content))
+
+    return {
+        "messages": [response],
+        "tool_trace": collect_tool_names(messages + [response]),
+        "active_recipe": recipe or state.get("active_recipe"),
+    }

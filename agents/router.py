@@ -23,13 +23,13 @@ def router_node(state: AgentBakingState):
 
     last_msg = messages[-1]
 
-    # Image in the message → always route to vision agent
+    
     if isinstance(last_msg.content, list):
         for block in last_msg.content:
             if isinstance(block, dict) and block.get("type") == "image_url":
                 return {"current_agent": "vision"}
 
-    # Detect any alert forwarded from the vision agent
+    
     text_content = (
         last_msg.content
         if isinstance(last_msg.content, str)
@@ -40,7 +40,17 @@ def router_node(state: AgentBakingState):
 
     # LLM-based intent classification
     response = model.invoke([SystemMessage(content=system_prompt), last_msg])
-    decision = response.content.strip().lower()
+    response_content = response.content
+    if isinstance(response_content, str):
+        decision = response_content.strip().lower()
+    else:
+        text_parts = []
+        for block in response_content:
+            if isinstance(block, str):
+                text_parts.append(block)
+            elif isinstance(block, dict) and isinstance(block.get("text"), str):
+                text_parts.append(block["text"])
+        decision = " ".join(text_parts).strip().lower()
 
     # Fallback in case of hallucination
     if decision not in {"search", "math", "copilot"}:

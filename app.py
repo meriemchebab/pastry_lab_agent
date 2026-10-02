@@ -1,4 +1,5 @@
 import base64
+import traceback
 import uuid
 from typing import Any, cast
 import gradio as gr
@@ -9,6 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from agents._helpers import message_to_text
 from core.graph import compiled_graph
 
 #  theme for gradio
@@ -30,8 +32,8 @@ class PastryTheme(Soft):
         )
         # Dark‑mode 
         self.set(
-            body_background_fill_dark="#2A2120",
-            block_background_fill_dark="#1E1E1E",
+            body_background_fill_dark="#12013B",
+            block_background_fill_dark="#0C0240",
             button_primary_background_fill_dark="#D94E86",
             button_primary_background_fill_hover_dark="#C73A73",
             button_secondary_background_fill_dark="#995F30",
@@ -61,7 +63,7 @@ def process_input(message_dict: dict, chat_history: list, thread_id: str):
         })
 
     if not content:
-        return gr.MultimodalTextbox(value=None), chat_history, gr.update(), gr.update()
+        return gr.MultimodalTextbox(value=None), chat_history, gr.update(), gr.update(), gr.update()
 
     human_msg = HumanMessage(content=content)
 
@@ -71,35 +73,52 @@ def process_input(message_dict: dict, chat_history: list, thread_id: str):
         chat_history.append({"role": "user", "content": (file_path,)})
 
     config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
-    response = compiled_graph.invoke(
-        cast(Any, {"messages": [human_msg]}), config=config
-    )
 
-    final_ai_msg = response["messages"][-1].content
-    if isinstance(final_ai_msg, list):
-        final_text = "\n".join(
-            block["text"]
-            for block in final_ai_msg
-            if block.get("type") == "text"
+    # Surfaces failures in the chat instead of only in the terminal.
+    try:
+        response = compiled_graph.invoke(
+            cast(Any, {"messages": [human_msg]}),
+            config=config,
+            # Tool loops can spin; cap the turn so a confused model can't hang the UI.
+            recursion_limit=25,
         )
-    else:
-        final_text = str(final_ai_msg)
+    except Exception as exc:
+        traceback.print_exc()
+        chat_history.append({
+            "role": "assistant",
+            "content": f"**Something broke while I was working.**\n\n```\n{type(exc).__name__}: {exc}\n```",
+        })
+        return gr.MultimodalTextbox(value=None), chat_history, gr.update(), gr.update(), gr.update()
+
+    final_ai_msg = response["messages"][-1]
+    final_text = message_to_text(final_ai_msg.content)
+
+    # Blank reply with pending tool calls means the tool loop never resolved.
+    if not final_text.strip():
+        pending = ", ".join(c.get("name", "?") for c in (final_ai_msg.tool_calls or []))
+        final_text = (
+            f"**Empty reply.** The model asked for `{pending or 'no tool'}` "
+            "but no result came back. Check the traceback above."
+        )
 
     chat_history.append({"role": "assistant", "content": final_text})
 
     state = compiled_graph.get_state(config).values
     active_recipe = state.get("active_recipe")
+    tool_trace = state.get("tool_trace") or []
 
     recipe_display_text = (
-        "Active Recipe Loaded" if active_recipe else "No recipe active."
+        f"{active_recipe['name']}" if active_recipe else "No recipe active."
     )
     step_display_text = f"Step {state.get('current_step', 1)}"
+    tool_display_text = ", ".join(tool_trace) if tool_trace else "None yet"
 
     return (
         gr.MultimodalTextbox(value=None),
         chat_history,
         recipe_display_text,
         step_display_text,
+        tool_display_text,
     )
 
 # --- Gradio UI Layout ---
@@ -121,6 +140,11 @@ with gr.Blocks(title="The Pastry Lab", theme=custom_theme) as demo:
                 value="Step 1",
                 interactive=False,
             )
+            tool_display = gr.Textbox(
+                label="Tools Used",
+                value="None yet",
+                interactive=False,
+            )
 
         with gr.Column(scale=3):
             chatbot = gr.Chatbot(
@@ -139,7 +163,7 @@ with gr.Blocks(title="The Pastry Lab", theme=custom_theme) as demo:
     chat_input.submit(
         fn=process_input,
         inputs=[chat_input, chatbot, thread_id],
-        outputs=[chat_input, chatbot, recipe_display, step_display],
+        outputs=[chat_input, chatbot, recipe_display, step_display, tool_display],
     )
 
 if __name__ == "__main__":
