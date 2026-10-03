@@ -33,10 +33,10 @@ class PastryTheme(Soft):
         # Dark‑mode 
         self.set(
             body_background_fill_dark="#12013B",
-            block_background_fill_dark="#0C0240",
+            block_background_fill_dark="#312b6e",
             button_primary_background_fill_dark="#D94E86",
             button_primary_background_fill_hover_dark="#C73A73",
-            button_secondary_background_fill_dark="#995F30",
+            button_secondary_background_fill_dark="#FCC761",
             button_secondary_background_fill_hover_dark="#99734F",
             border_color_primary_dark="#B04D8A",
         )
@@ -167,4 +167,4 @@ with gr.Blocks(title="The Pastry Lab", theme=custom_theme) as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch(theme=custom_theme)
+    demo.launch(theme=custom_theme,share=True)

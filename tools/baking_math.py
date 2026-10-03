@@ -4,21 +4,32 @@ from langchain_core.tools import tool
 from tools.ingredient_db import INGREDIENT_DATABASE
 
 @tool
-def scale_pan_geometry(source_shape: str, source_dim: float, target_shape: str, target_dim: float) -> str:
+def scale_pan_geometry(source_shape: str, source_dim: float, target_shape: str, target_dim: float, unit: str = "centimeters") -> str:
     """
     Calculates the scaling factor between two baking pans based on surface area.
     Use this when the user's pan size differs from the recipe.
     Args:
         source_shape: 'round' or 'square'
-        source_dim: diameter or side length in inches
+        source_dim: diameter or side length in the selected unit
         target_shape: 'round' or 'square' 
-        target_dim: diameter or side length in inches
+        target_dim: diameter or side length in the selected unit
+        unit: 'inches' or 'centimeters' (defaults to centimeters)
     """
+    unit_key = unit.strip().lower()
+    unit_aliases = {"inch": "inches", "in": "inches", "cm": "centimeters", "centimeter": "centimeters", "centimeters": "centimeters"}
+    unit_key = unit_aliases.get(unit_key, unit_key)
+    if unit_key not in {"inches", "centimeters"}:
+        return "Error: unit must be 'inches' or 'centimeters'."
+    if source_dim <= 0 or target_dim <= 0:
+        return "Error: pan dimensions must be greater than zero."
+    if source_shape not in {"round", "square"} or target_shape not in {"round", "square"}:
+        return "Error: pan shapes must be 'round' or 'square'."
+
     area_src = math.pi * ((source_dim / 2) ** 2) if source_shape == "round" else source_dim ** 2
     area_tgt = math.pi * ((target_dim / 2) ** 2) if target_shape == "round" else target_dim ** 2
     scale_factor = round(area_tgt / area_src, 2)
     
-    return f"Multiply all ingredients by {scale_factor} to properly scale the batter from a {source_dim}-inch {source_shape} pan to a {target_dim}-inch {target_shape} pan."
+    return f"Multiply all ingredients by {scale_factor} to properly scale the batter from a {source_dim}-{unit_key} {source_shape} pan to a {target_dim}-{unit_key} {target_shape} pan."
 
 @tool
 def calculate_fat_substitution(original_ingredient: str, original_grams: float, target_substitute: str) -> str:

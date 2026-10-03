@@ -6,7 +6,7 @@ The Pastry Lab is a stateful, multi-agent baking assistant built with LangGraph,
 
 - **Recipe search:** Find real online recipes based on ingredients or baking ideas, with source links.
 - **Ingredient photo analysis:** Upload a pantry or countertop photo to identify visible ingredients and possible gaps.
-- **Baking math:** Scale a recipe between round and square pans by surface area, and calculate fat and moisture adjustments for supported ingredient substitutions.
+- **Baking math:** Scale a recipe between round and square pans by surface area using inches or centimeters, and calculate fat and moisture adjustments for supported ingredient substitutions.
 - **Guided baking:** Get the current recipe step with practical sensory cues, then continue as you bake.
 - **Conversation state:** Keep recipe and baking progress within a chat session.
 
@@ -70,7 +70,7 @@ Use these ingredient keys when asking for substitutions:
 
 `butter_standard`, `neutral_oil`, `water`, `whole_milk`, `whole_egg`, and `granulated_sugar`.
 
-Substitution math matches fat content and reports how much liquid to add or withhold to balance moisture. Pan scaling accepts `round` or `square` pans and dimensions in inches.
+Substitution math matches fat content and reports how much liquid to add or withhold to balance moisture. Pan scaling accepts `round` or `square` pans and dimensions in inches or centimeters (centimeters are assumed when no unit is specified).
 
 ## Run tests
 
@@ -89,3 +89,6 @@ core/                   LangGraph workflow and shared state
 tools/                  Recipe search and baking calculations
 tests/                  Offline unit and workflow tests
 ```
+## License
+
+This project is licensed under the [MIT License](LICENSE).

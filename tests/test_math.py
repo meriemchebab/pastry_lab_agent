@@ -11,6 +11,7 @@ def test_same_round_pan_has_no_scaling():
     )
 
     assert "Multiply all ingredients by 1.0" in result
+    assert "8-centimeters round pan" in result
 
 
 def test_round_pan_scaling_uses_area_ratio():
@@ -27,6 +28,34 @@ def test_square_to_round_pan_scaling():
     )
 
     assert "Multiply all ingredients by 0.79" in result
+
+
+def test_centimeter_pan_scaling():
+    result = scale_pan_geometry.invoke(
+        {"source_shape": "round", "source_dim": 20, "target_shape": "round", "target_dim": 25, "unit": "cm"}
+    )
+
+    assert "Multiply all ingredients by 1.56" in result
+    assert "20-centimeters round pan" in result
+
+
+def test_dimensions_scale_consistently_in_inches():
+    source_inches = 8
+    target_inches = 10
+    result = scale_pan_geometry.invoke(
+        {"source_shape": "round", "source_dim": source_inches, "target_shape": "round", "target_dim": target_inches, "unit": "inches"}
+    )
+
+    assert "Multiply all ingredients by 1.56" in result
+    assert "8-inches round pan" in result
+
+
+def test_invalid_pan_unit_returns_error():
+    result = scale_pan_geometry.invoke(
+        {"source_shape": "round", "source_dim": 8, "target_shape": "round", "target_dim": 10, "unit": "millimeters"}
+    )
+
+    assert "unit must be 'inches' or 'centimeters'" in result
 
 
 def test_zero_source_dimension_raises_division_error():
