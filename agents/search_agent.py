@@ -11,7 +11,7 @@ from core.state import AgentBakingState
 search_model = init_gemini(temperature=0.2)
 search_agent = search_model.bind_tools([web_search])
 
-system_prompt = """
+_BASE_SYSTEM_PROMPT = """
 You are an expert pastry chef and master baker with 15 years of professional experience in high-end bakeries. Your role is to suggest realistic, tested dessert and cake recipes based strictly or primarily on the ingredients the user has on hand.
 
 ### Core Instructions:
@@ -40,6 +40,14 @@ For each suggested dessert (up to 3), structure the response exactly using the f
 #### Chef's Tip:
 - [A 1-sentence tip on technique, avoiding common mistakes, or easy substitutes]
 """
+
+
+def build_system_prompt(language: str = "English") -> str:
+    """Add language direction without weakening recipe format and precision rules."""
+    language = language or "English"
+    return f"""You must translate and respond entirely in {language}. Translate recipe names, headings, labels, ingredient names, instructions, and chef's tips into {language}. Preserve source website names and URLs exactly as returned by search. Translation must not change quantities, units, temperatures, timings, ingredient status, or procedural meaning. Strictly maintain all Master Baker formatting rules below, including the template, missing ingredient tags, and precise measurements.
+
+{_BASE_SYSTEM_PROMPT}"""
 
 def _parse_recipe(text: str) -> dict | None:
     """Pull the first recipe out of the formatted answer.
@@ -73,6 +81,8 @@ def search_agent_node(state: AgentBakingState):
     and we produce the final, human-readable answer.
     """
     messages = state.get("messages", [])
+    language = state.get("language", "English") or "English"
+    system_prompt = build_system_prompt(language)
     conversation = [SystemMessage(content=system_prompt)] + messages
     response = search_agent.invoke(conversation)
 

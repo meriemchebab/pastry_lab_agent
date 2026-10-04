@@ -15,7 +15,7 @@ from core.graph import compiled_graph
 
 MAX_INPUT_TOKENS = 4000
 
-def invoke_with_telemetry(user_message: HumanMessage, thread_id: str) -> tuple[dict | None, str | None]:
+def invoke_with_telemetry(user_message: HumanMessage, thread_id: str, language: str = "English") -> tuple[dict | None, str | None]:
     """Invoke the graph for a single user message with an input-size guard."""
     text_payload = message_to_text(user_message.content)
     estimated_tokens = len(text_payload) // 4
@@ -27,7 +27,7 @@ def invoke_with_telemetry(user_message: HumanMessage, thread_id: str) -> tuple[d
 
     config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
     response = compiled_graph.invoke(
-        cast(Any, {"messages": [user_message]}),
+        cast(Any, {"messages": [user_message], "language": language}),
         config=config,
         recursion_limit=25,
     )
@@ -72,7 +72,7 @@ def encode_image(image_path: str) -> str:
     with open(image_path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
-def process_input(message_dict: dict, chat_history: list, thread_id: str):
+def process_input(message_dict: dict, chat_history: list, thread_id: str, language: str):
     text = message_dict.get("text", "")
     files = message_dict.get("files", [])
 
@@ -99,7 +99,7 @@ def process_input(message_dict: dict, chat_history: list, thread_id: str):
 
     # Surfaces failures in the chat instead of only in the terminal.
     try:
-        response, size_error = invoke_with_telemetry(human_msg, thread_id)
+        response, size_error = invoke_with_telemetry(human_msg, thread_id, language)
     except Exception as exc:
         traceback.print_exc()
         chat_history.append({
@@ -151,6 +151,12 @@ with gr.Blocks(title="The Pastry Lab", theme=custom_theme) as demo:
 
     with gr.Row():
         with gr.Column(scale=1):
+            with gr.Accordion("Settings", open=True):
+                lang_dropdown = gr.Dropdown(
+                    label="Language",
+                    choices=["English", "Arabic", "French"],
+                    value="English",
+                )
             gr.Markdown("### Session State")
             recipe_display = gr.Textbox(
                 label="Active Recipe",
@@ -184,7 +190,7 @@ with gr.Blocks(title="The Pastry Lab", theme=custom_theme) as demo:
 
     chat_input.submit(
         fn=process_input,
-        inputs=[chat_input, chatbot, thread_id],
+        inputs=[chat_input, chatbot, thread_id, lang_dropdown],
         outputs=[chat_input, chatbot, recipe_display, step_display, tool_display],
     )
 

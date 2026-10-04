@@ -242,3 +242,35 @@ def test_parse_recipe_returns_none_when_shape_is_unexpected():
 
     assert _parse_recipe("no recipe structure here") is None
     assert _parse_recipe("") is None
+
+
+def test_search_prompt_selects_language_and_preserves_recipe_constraints():
+    from agents.search_agent import build_system_prompt
+
+    prompt = build_system_prompt("French")
+
+    assert "respond entirely in French" in prompt
+    assert "### [Recipe Name]" in prompt
+    assert "[Missing - required]" in prompt
+    assert "[Optional]" in prompt
+    assert "[Quantity in cups/tbsp] ([Quantity in g/ml])" in prompt
+    assert "Do not invent or hallucinate recipes" in prompt
+    assert "quantities, units, temperatures, timings" in prompt
+
+
+def test_search_agent_uses_language_from_state_and_defaults_to_english(monkeypatch):
+    from agents import search_agent as search_module
+
+    observed = []
+
+    class FakeSearchModel:
+        def invoke(self, messages):
+            observed.append(messages[0].content)
+            return AIMessage(content="No recipe found")
+
+    monkeypatch.setattr(search_module, "search_agent", FakeSearchModel())
+    search_module.search_agent_node({"messages": [], "language": "Arabic"})
+    search_module.search_agent_node({"messages": []})
+
+    assert "entirely in Arabic" in observed[0]
+    assert "entirely in English" in observed[1]

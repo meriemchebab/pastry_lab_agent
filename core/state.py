@@ -11,5 +11,6 @@ class AgentBakingState(TypedDict):
     current_agent: str
     active_recipe: Optional[Dict[str, Any]]
     current_step: int
+    language: str
   
     tool_trace: Annotated[list, lambda a, b: list(dict.fromkeys(a + b))]

@@ -9,6 +9,7 @@ The Pastry Lab is a stateful, multi-agent baking assistant built with LangGraph,
 - **Baking math:** Scale a recipe between round and square pans by surface area using inches or centimeters, and calculate fat and moisture adjustments for supported ingredient substitutions.
 - **Guided baking:** Get the current recipe step with practical sensory cues, then continue as you bake.
 - **Conversation state:** Keep recipe and baking progress within a chat session.
+- **Response language:** Choose English, Arabic, or French in the Settings sidebar. Recipe search responses follow the selected language while preserving recipe formatting, ingredient status tags, and exact measurements.
 
 ## Requirements
 
@@ -49,7 +50,7 @@ The app loads `.env` on startup. Keep your real keys private and do not commit t
 python app.py
 ```
 
-Open the local Gradio URL printed in the terminal. Enter a baking request in the chat box or attach an image to ask about visible ingredients.
+Open the local Gradio URL printed in the terminal. Choose a response language in the Settings sidebar, then enter a baking request in the chat box or attach an image to ask about visible ingredients. The language preference is passed into graph state for the request; the search agent uses it to translate its full recipe response while retaining source names and URLs, the Master Baker output format, missing ingredient tags, and recipe quantities and units.
 
 ## How requests are handled
 
