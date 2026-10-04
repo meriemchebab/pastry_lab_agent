@@ -125,6 +125,7 @@ def process_input(message_dict: dict, chat_history: list, thread_id: str, langua
 
     chat_history.append({"role": "assistant", "content": final_text})
 
+    config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
     state = compiled_graph.get_state(config).values
     active_recipe = state.get("active_recipe")
     tool_trace = state.get("tool_trace") or []
