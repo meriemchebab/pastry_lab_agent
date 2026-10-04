@@ -13,6 +13,31 @@ load_dotenv()
 from agents._helpers import message_to_text
 from core.graph import compiled_graph
 
+MAX_INPUT_TOKENS = 4000
+
+def invoke_with_telemetry(user_message: HumanMessage, thread_id: str) -> tuple[dict | None, str | None]:
+    """Invoke the graph for a single user message with an input-size guard."""
+    text_payload = message_to_text(user_message.content)
+    estimated_tokens = len(text_payload) // 4
+    if estimated_tokens > MAX_INPUT_TOKENS:
+        return None, (
+            f"Your message is estimated at {estimated_tokens} tokens; "
+            f"the limit is {MAX_INPUT_TOKENS}. Please shorten it and try again."
+        )
+
+    config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
+    response = compiled_graph.invoke(
+        cast(Any, {"messages": [user_message]}),
+        config=config,
+        recursion_limit=25,
+    )
+    final_ai_msg = response["messages"][-1]
+    usage = getattr(final_ai_msg, "usage_metadata", None)
+    if not usage:
+        usage = getattr(final_ai_msg, "response_metadata", {}).get("token_usage")
+    print(f"Token usage: {usage if usage is not None else 'unavailable'}")
+    return response, None
+
 #  theme for gradio
 class PastryTheme(Soft):
     def __init__(self):
@@ -72,22 +97,19 @@ def process_input(message_dict: dict, chat_history: list, thread_id: str):
     for file_path in files:
         chat_history.append({"role": "user", "content": (file_path,)})
 
-    config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
-
     # Surfaces failures in the chat instead of only in the terminal.
     try:
-        response = compiled_graph.invoke(
-            cast(Any, {"messages": [human_msg]}),
-            config=config,
-            # Tool loops can spin; cap the turn so a confused model can't hang the UI.
-            recursion_limit=25,
-        )
+        response, size_error = invoke_with_telemetry(human_msg, thread_id)
     except Exception as exc:
         traceback.print_exc()
         chat_history.append({
             "role": "assistant",
             "content": f"**Something broke while I was working.**\n\n```\n{type(exc).__name__}: {exc}\n```",
         })
+        return gr.MultimodalTextbox(value=None), chat_history, gr.update(), gr.update(), gr.update()
+
+    if size_error:
+        chat_history.append({"role": "assistant", "content": size_error})
         return gr.MultimodalTextbox(value=None), chat_history, gr.update(), gr.update(), gr.update()
 
     final_ai_msg = response["messages"][-1]

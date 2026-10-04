@@ -1,0 +1,8 @@
+{
+  "$schema": "https://raw.githubusercontent.com/langchain-ai/langgraph/main/libs/cli/schemas/langgraph.schema.json",
+  "dependencies": ["."],
+  "graphs": {
+    "pastry_lab": "./core/graph.py:compiled_graph"
+  },
+  "env": ".env"
+}

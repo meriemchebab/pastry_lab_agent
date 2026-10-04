@@ -56,4 +56,7 @@ def router_node(state: AgentBakingState):
     if decision not in {"search", "math", "copilot"}:
         decision = "search"
 
-    return {"current_agent": decision}
+    updates = {"current_agent": decision}
+    if decision == "search":
+        updates.update({"active_recipe": None, "current_step": 1})
+    return updates

@@ -11,6 +11,7 @@ from agents.search_agent import search_agent_node
 from agents.math_agent import math_agent_node
 from agents.vision_agent import vision_agent_node
 from agents.copilot_agent import copilot_agent_node
+from agents.summarizer import summarize_memory_node
 
 # Import the tools each specialist is allowed to call
 from tools.search_tool import web_search
@@ -18,6 +19,7 @@ from tools.baking_math import scale_pan_geometry, calculate_fat_substitution
 
 workflow = StateGraph(AgentBakingState)
 workflow.add_node("router", router_node)
+workflow.add_node("summarize_memory", summarize_memory_node)
 workflow.add_node("search", search_agent_node)
 workflow.add_node("math", math_agent_node)
 workflow.add_node("vision", vision_agent_node)
@@ -30,7 +32,8 @@ workflow.add_node("math_tools", ToolNode([scale_pan_geometry, calculate_fat_subs
 
 # Define the Flow
 # start with router
-workflow.add_edge(START, "router")
+workflow.add_edge(START, "summarize_memory")
+workflow.add_edge("summarize_memory", "router")
 
 
 # A routing function to read the router's decision

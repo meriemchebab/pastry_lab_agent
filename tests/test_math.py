@@ -11,7 +11,7 @@ def test_same_round_pan_has_no_scaling():
     )
 
     assert "Multiply all ingredients by 1.0" in result
-    assert "8-centimeters round pan" in result
+    assert "8.0-centimeters round pan" in result
 
 
 def test_round_pan_scaling_uses_area_ratio():
@@ -36,7 +36,7 @@ def test_centimeter_pan_scaling():
     )
 
     assert "Multiply all ingredients by 1.56" in result
-    assert "20-centimeters round pan" in result
+    assert "20.0-centimeters round pan" in result
 
 
 def test_dimensions_scale_consistently_in_inches():
@@ -47,7 +47,7 @@ def test_dimensions_scale_consistently_in_inches():
     )
 
     assert "Multiply all ingredients by 1.56" in result
-    assert "8-inches round pan" in result
+    assert "8.0-inches round pan" in result
 
 
 def test_invalid_pan_unit_returns_error():
@@ -58,20 +58,21 @@ def test_invalid_pan_unit_returns_error():
     assert "unit must be 'inches' or 'centimeters'" in result
 
 
-def test_zero_source_dimension_raises_division_error():
-    with pytest.raises(ZeroDivisionError):
-        scale_pan_geometry.invoke(
-            {"source_shape": "round", "source_dim": 0, "target_shape": "square", "target_dim": 8}
-        )
+def test_zero_source_dimension_returns_validation_error():
+    result = scale_pan_geometry.invoke(
+        {"source_shape": "round", "source_dim": 0, "target_shape": "square", "target_dim": 8}
+    )
+
+    assert result == "Error: pan dimensions must be greater than zero."
 
 
-def test_unrecognized_pan_shape_currently_uses_square_area():
-    """Document current behavior for pan shapes the tool does not validate."""
+def test_unrecognized_pan_shape_returns_validation_error():
+    """Invalid shape names are rejected instead of treated as square pans."""
     result = scale_pan_geometry.invoke(
         {"source_shape": "triangle", "source_dim": 8, "target_shape": "square", "target_dim": 8}
     )
 
-    assert "Multiply all ingredients by 1.0" in result
+    assert result == "Error: pan shapes must be 'round' or 'square'."
 
 
 def test_butter_to_oil_matches_fat_and_reports_missing_moisture():
